@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
@@ -73,7 +73,7 @@ server.registerTool({
     query: z.string().describe("Search query (e.g. 'red shoes', 'wireless headphones')"),
     limit: z.number().min(1).max(50).default(10).describe("Number of products to return (max 50)"),
   }),
-  handler: async ({ query, limit }) => {
+  handler: async ({ query, limit }: { query: string; limit: number }) => {
     const gqlQuery = `
       query SearchProducts($query: String!, $limit: Int!) {
         products(first: $limit, query: $query) {
@@ -113,13 +113,13 @@ server.registerTool({
 });
 
 // ==================== SSE TRANSPORT SETUP ====================
-app.get('/sse', async (req, res) => {
+app.get('/sse', async (req: Request, res: Response) => {
   console.log('🔌 New SSE connection established');
   const transport = new SSEServerTransport('/messages', req, res);
   await server.connect(transport);
 });
 
-app.post('/messages', async (req, res) => {
+app.post('/messages', async (req: Request, res: Response) => {
   const transport = SSEServerTransport.fromRequest(req);
   if (transport) {
     await transport.handlePostMessage(req, res);
@@ -129,7 +129,7 @@ app.post('/messages', async (req, res) => {
 });
 
 // Health check
-app.get('/', (req, res) => {
+app.get('/', (req: Request, res: Response) => {
   res.send('✅ Shopify MCP Server (SSE) is running on Render');
 });
 
