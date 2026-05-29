@@ -47,55 +47,67 @@ const server = new McpServer({
   version: '1.0.0'
 });
 
-// Tool 1: List Products
-server.addTool({
-  name: 'list_products',
-  description: 'List products from the Shopify store',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      first: { type: 'number', description: 'Number of products to return (max 250)' }
+// Define all tools as an array
+const tools = [
+  {
+    name: 'list_products',
+    description: 'List products from the Shopify store',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        first: { type: 'number', description: 'Number of products to return (max 250)' }
+      }
+    },
+    handler: async ({ first = 10 }) => {
+      const token = await getAccessToken();
+      const query = `{ products(first: ${first}) { edges { node { id title handle status } } } }`;
+      const res = await fetch(`https://${SHOP_DOMAIN}/admin/api/2026-01/graphql.json`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
+        body: JSON.stringify({ query })
+      });
+      const data = await res.json();
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
     }
   },
-  handler: async ({ first = 10 }) => {
-    const token = await getAccessToken();
-    const query = `{ products(first: ${first}) { edges { node { id title handle status } } } }`;
-    const res = await fetch(`https://${SHOP_DOMAIN}/admin/api/2026-01/graphql.json`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
-      body: JSON.stringify({ query })
-    });
-    const data = await res.json();
-    return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
-  }
-});
-
-// Tool 2: Get Single Product
-server.addTool({
-  name: 'get_product',
-  description: 'Get details of a specific product by ID',
-  inputSchema: {
-    type: 'object',
-    properties: {
-      productId: { type: 'string', description: 'Product GID (e.g. gid://shopify/Product/1234567890)' }
+  {
+    name: 'get_product',
+    description: 'Get details of a specific product by ID',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        productId: { type: 'string', description: 'Product GID (e.g. gid://shopify/Product/1234567890)' }
+      }
+    },
+    handler: async ({ productId }) => {
+      const token = await getAccessToken();
+      const query = `{ product(id: \"${productId}\") { id title handle status variants(first: 10) { edges { node { id title price } } } } }`;
+      const res = await fetch(`https://${SHOP_DOMAIN}/admin/api/2026-01/graphql.json`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
+        body: JSON.stringify({ query })
+      });
+      const data = await res.json();
+      return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
     }
-  },
-  handler: async ({ productId }) => {
-    const token = await getAccessToken();
-    const query = `{ product(id: \"${productId}\") { id title handle status variants(first: 10) { edges { node { id title price } } } } }`;
-    const res = await fetch(`https://${SHOP_DOMAIN}/admin/api/2026-01/graphql.json`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Shopify-Access-Token': token },
-      body: JSON.stringify({ query })
-    });
-    const data = await res.json();
-    return { content: [{ type: 'text', text: JSON.stringify(data, null, 2) }] };
   }
+];
+
+// Register all tools at once (correct method)
+server.addTools(tools);
+
+const transport = new StreamableHTTPServerTransport({
+  sessionIdGenerator: () => crypto.randomUUID()
 });
 
-const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: () => crypto.randomUUID() });
+app.post('/mcp', async (req, res) => {
+  await transport.handleRequest(req, res, req.body);
+});
 
-app.post('/mcp', async (req, res) => { await transport.handleRequest(req, res, req.body); });
-app.get('/', (req, res) => res.send('✅ Production-ready Shopify Admin MCP Server (OAuth Client Credentials) running on Render'));
+app.get('/', (req, res) => {
+  res.send('✅ Production-ready Shopify Admin MCP Server (OAuth Client Credentials) running on Render');
+});
 
-app.listen(PORT, () => console.log(`Server started on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server started on port ${PORT}`);
+});
