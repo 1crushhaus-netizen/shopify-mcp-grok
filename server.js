@@ -1,10 +1,10 @@
-import { createRemoteServer } from '@tzenderman/shopify-mcp';
 import express from 'express';
+import { createServer } from '@tzenderman/shopify-mcp';
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const mcpServer = createRemoteServer({
+const mcpServer = createServer({
   shopDomain: process.env.SHOPIFY_SHOP_DOMAIN,
   clientId: process.env.SHOPIFY_CLIENT_ID,
   clientSecret: process.env.SHOPIFY_CLIENT_SECRET,
