@@ -6,7 +6,8 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "shopify-mcp": "latest",
-    "express": "^4.21.2"
+    "@tzenderman/shopify-mcp": "latest",
+    "express": "^4.21.2",
+    "@modelcontextprotocol/sdk": "latest"
   }
 }

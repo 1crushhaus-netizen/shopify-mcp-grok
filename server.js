@@ -1,30 +1,35 @@
-import { spawn } from 'child_process';
+import express from 'express';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
+import { shopifyTools } from '@tzenderman/shopify-mcp';
 
+const app = express();
 const PORT = process.env.PORT || 3000;
 
-const mcp = spawn('npx', [
-  'shopify-mcp',
-  '--clientId', process.env.SHOPIFY_CLIENT_ID,
-  '--clientSecret', process.env.SHOPIFY_CLIENT_SECRET,
-  '--domain', process.env.SHOPIFY_SHOP_DOMAIN,
-  '--port', PORT.toString()
-], {
-  stdio: ['pipe', 'pipe', 'pipe'],
-  env: process.env
+const server = new McpServer({
+  name: "shopify-mcp",
+  version: "1.0.0",
 });
 
-mcp.stdout.on('data', (data) => {
-  console.log(data.toString());
+// Add Shopify tools
+server.addTools(shopifyTools({
+  shopDomain: process.env.SHOPIFY_SHOP_DOMAIN,
+  clientId: process.env.SHOPIFY_CLIENT_ID,
+  clientSecret: process.env.SHOPIFY_CLIENT_SECRET,
+}));
+
+const transport = new StreamableHTTPServerTransport({
+  sessionIdGenerator: () => crypto.randomUUID(),
 });
 
-mcp.stderr.on('data', (data) => {
-  console.error(data.toString());
+app.post('/mcp', async (req, res) => {
+  await transport.handleRequest(req, res, req.body);
 });
 
-mcp.on('error', (err) => {
-  console.error('Failed to start shopify-mcp:', err);
+app.get('/', (req, res) => {
+  res.send('✅ Shopify MCP Server is running on Render');
 });
 
-mcp.on('close', (code) => {
-  console.log(`shopify-mcp process exited with code ${code}`);
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
